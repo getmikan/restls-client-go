@@ -479,10 +479,12 @@ func TestCrossVersionResume(t *testing.T) {
 
 func testCrossVersionResume(t *testing.T, version uint16) {
 	serverConfig := &Config{
+		Time:         certificateFixtureTime,
 		CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 		Certificates: testConfig.Certificates,
 	}
 	clientConfig := &Config{
+		Time:               certificateFixtureTime,
 		CipherSuites:       []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 		InsecureSkipVerify: true,
 		ClientSessionCache: NewLRUClientSessionCache(1),
@@ -627,6 +629,9 @@ func (test *serverTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 }
 
 func (test *serverTest) dataPath() string {
+	if modernECDSATranscripts && strings.HasSuffix(test.name, "ECDHE-ECDSA-AES") {
+		return filepath.Join("testdata", "go1.24", "Server-"+test.name)
+	}
 	return filepath.Join("testdata", "Server-"+test.name)
 }
 

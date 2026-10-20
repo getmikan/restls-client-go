@@ -326,6 +326,10 @@ func allCipherSuites() []uint16 {
 	return ids
 }
 
+// certificateFixtureTime is within the validity window of the static test
+// certificates. Ticket-aging tests advance from this epoch, not wall time.
+func certificateFixtureTime() time.Time { return time.Unix(1476984729, 0) }
+
 var testConfig *Config
 
 func TestMain(m *testing.M) {

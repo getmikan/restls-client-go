@@ -23,6 +23,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-latest, go: '1.20' }
+          - { os: ubuntu-latest, go: '1.24' }
           - { os: ubuntu-latest, go: '1.26' }
           - { os: windows-latest, go: '1.26' }
     runs-on: ${{ matrix.os }}
@@ -38,11 +39,8 @@ jobs:
       - name: Vet
         if: matrix.go == '1.26'
         run: go vet -loopclosure=false ./...
-      # The inherited generic TLS suite has expired certificates, Go-version
-      # dependent golden transcripts and a pre-existing QUIC resumption panic.
-      # This job covers ResTLS protocol regressions explicitly.
-      - name: ResTLS protocol tests
-        run: go test -count=1 -timeout 5m -run 'Test(Restls|HandshakeMessageReader|NewRateLimitedConn|RateLimitedConn|BitRateLimiter)' ./...
+      - name: Full TLS and ResTLS tests
+        run: go test -count=1 -timeout 5m ./...
 
   race:
     runs-on: ubuntu-latest
@@ -51,5 +49,5 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: '1.26'
-      - name: ResTLS protocol tests with race detector
-        run: go test -race -count=3 -timeout 5m -run 'Test(Restls|HandshakeMessageReader|NewRateLimitedConn|RateLimitedConn|BitRateLimiter)' ./...
+      - name: Full TLS and ResTLS tests with race detector
+        run: go test -race -count=3 -timeout 5m ./...
