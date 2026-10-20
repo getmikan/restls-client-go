@@ -872,6 +872,9 @@ func (r *handshakeMessageReader) addRecord(record []byte, fn func([]byte) bool) 
 }
 
 func relayRaw(a, b net.Conn, rateLimit uint64) error {
+	if notifier, ok := a.(interface{ HandshakeComplete() }); ok {
+		notifier.HandshakeComplete()
+	}
 	b = newRateLimitedConn(b, rateLimit)
 	errc := make(chan error, 2)
 	go func() {

@@ -9,6 +9,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -200,13 +201,14 @@ func TestRestlsServerFallbackNonTLS(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	clientConn, serverConn := localPipe(t)
+	notifier := &restlsHandshakeNotifier{Conn: serverConn}
 	defer clientConn.Close()
 	if err := clientConn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	serverDone := make(chan error, 1)
 	go func() {
-		conn, err := RestlsServer(ctx, serverConn, serverConfig)
+		conn, err := RestlsServer(ctx, notifier, serverConfig)
 		if conn != nil {
 			_ = conn.Close()
 			serverDone <- errors.New("non-TLS fallback returned a Restls connection")
@@ -225,6 +227,9 @@ func TestRestlsServerFallbackNonTLS(t *testing.T) {
 	if string(got) != response {
 		t.Fatalf("fallback response = %q, want %q", got, response)
 	}
+	if notifier.calls.Load() != 1 {
+		t.Fatal("fallback did not release the hosting listener's handshake guard exactly once")
+	}
 	if err := <-targetDone; err != nil {
 		t.Fatal(err)
 	}
@@ -238,6 +243,13 @@ func TestRestlsServerFallbackNonTLS(t *testing.T) {
 		t.Fatal("non-TLS fallback did not finish")
 	}
 }
+
+type restlsHandshakeNotifier struct {
+	net.Conn
+	calls atomic.Int32
+}
+
+func (c *restlsHandshakeNotifier) HandshakeComplete() { c.calls.Add(1) }
 
 func TestHandshakeMessageReaderAcrossRecords(t *testing.T) {
 	certificate := []byte{typeCertificate, 0, 0, 6, 1, 2, 3, 4, 5, 6}

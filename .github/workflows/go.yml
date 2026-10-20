@@ -1,29 +1,55 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: "Go"
+name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [dev, main]
   pull_request:
-    branches: [ "master" ]
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GOTOOLCHAIN: local
 
 jobs:
-  build:
+  restls:
     strategy:
       fail-fast: false
       matrix:
-        os: [ "ubuntu-latest", "windows-latest", "macos-latest" ]
-        go: [ "1.20.x", "1.21.0" ]
+        include:
+          - { os: ubuntu-latest, go: '1.20' }
+          - { os: ubuntu-latest, go: '1.26' }
+          - { os: windows-latest, go: '1.26' }
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go }}
-    - run: go version
-    - name: Build
-      run: go build -v ./...
-    - name: Test
-      run: go test -v ./...
+      - name: Preserve test fixture line endings
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go build ./...
+      - name: Vet
+        if: matrix.go == '1.26'
+        run: go vet -loopclosure=false ./...
+      # The inherited generic TLS suite has expired certificates, Go-version
+      # dependent golden transcripts and a pre-existing QUIC resumption panic.
+      # This job covers ResTLS protocol regressions explicitly.
+      - name: ResTLS protocol tests
+        run: go test -count=1 -timeout 5m -run 'Test(Restls|HandshakeMessageReader|NewRateLimitedConn|RateLimitedConn|BitRateLimiter)' ./...
+
+  race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.26'
+      - name: ResTLS protocol tests with race detector
+        run: go test -race -count=3 -timeout 5m -run 'Test(Restls|HandshakeMessageReader|NewRateLimitedConn|RateLimitedConn|BitRateLimiter)' ./...
