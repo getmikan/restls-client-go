@@ -855,7 +855,7 @@ func TestCloneNonFuncFields(t *testing.T) {
 			f.Set(reflect.ValueOf("b"))
 		case "ClientAuth":
 			f.Set(reflect.ValueOf(VerifyClientCertIfGiven))
-		case "InsecureSkipVerify", "InsecureSkipTimeVerify", "SessionTicketsDisabled", "DynamicRecordSizingDisabled", "PreferServerCipherSuites":
+		case "ForceTLS12", "InsecureSkipVerify", "InsecureSkipTimeVerify", "SessionTicketsDisabled", "DynamicRecordSizingDisabled", "PreferServerCipherSuites":
 			f.Set(reflect.ValueOf(true))
 		case "InsecureServerNameToVerify":
 			f.Set(reflect.ValueOf("c"))
@@ -883,7 +883,9 @@ func TestCloneNonFuncFields(t *testing.T) {
 		case "RestlsScript":
 			f.Set(reflect.ValueOf([]Line{{TargetLength{100, 0}, ActNoop{}}}))
 		case "ClientID":
-			f.Set(reflect.ValueOf(&HelloChrome_Auto))
+			id := new(atomic.Pointer[ClientHelloID])
+			id.Store(&HelloChrome_Auto)
+			f.Set(reflect.ValueOf(id))
 		// #Restls# End
 		default:
 			t.Errorf("all fields must be accounted for, but saw unknown field %q", fn)
