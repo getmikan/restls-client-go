@@ -73,19 +73,6 @@ func UClient(conn net.Conn, config *Config, clientHelloID ClientHelloID) *UConn 
 func (uconn *UConn) BuildHandshakeState() error {
 	if uconn.ClientHelloID == HelloGolang {
 		panic("Golang ClientHello is disabled") // #Restls#
-		if uconn.ClientHelloBuilt {
-			return nil
-		}
-
-		// use default Golang ClientHello.
-		hello, ecdheKey, err := uconn.makeClientHello()
-		if err != nil {
-			return err
-		}
-
-		uconn.HandshakeState.Hello = hello.getPublicPtr()
-		uconn.HandshakeState.State13.EcdheKey = ecdheKey
-		uconn.HandshakeState.C = uconn.Conn
 	} else {
 		if !uconn.ClientHelloBuilt {
 			err := uconn.applyPresetByID(uconn.ClientHelloID)

@@ -879,9 +879,7 @@ func TestCloneNonFuncFields(t *testing.T) {
 		case "VersionHint":
 			f.Set(reflect.ValueOf(TLS12Hint))
 		case "CurveIDHint":
-			hint := atomic.Uint32{}
-			hint.Store(uint32(CurveP256))
-			f.Set(reflect.ValueOf(hint))
+			f.Addr().Interface().(*atomic.Uint32).Store(uint32(CurveP256))
 		case "RestlsScript":
 			f.Set(reflect.ValueOf([]Line{{TargetLength{100, 0}, ActNoop{}}}))
 		case "ClientID":
